@@ -9,14 +9,15 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/alecthomas/kingpin"
-	kitlog "github.com/go-kit/kit/log"
-	level "github.com/go-kit/kit/log/level"
+	kitlog "github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	"github.com/gocardless/pgreplay-go/pkg/pgreplay"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx"
 )
 
 var logger kitlog.Logger
