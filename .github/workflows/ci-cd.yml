@@ -12,6 +12,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        # Provide the password for postgres
+        env:
+          POSTGRES_USER: pgreplay_test_users
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: pgreplay_test
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
