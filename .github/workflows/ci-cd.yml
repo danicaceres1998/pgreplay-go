@@ -30,6 +30,7 @@ jobs:
           --health-retries 5
     env:
       PGUSER: postgres
+      PGPASSWORD: password
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3

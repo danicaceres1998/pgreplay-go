@@ -2,7 +2,7 @@ PROG=bin/pgreplay
 PROJECT=github.com/gocardless/pgreplay-go
 VERSION=$(shell git rev-parse --short HEAD)-dev
 BUILD_COMMAND=go build -ldflags "-X main.Version=$(VERSION)"
-DB_CONN_CONFIG=-h localhost -p 5432 -U postgres -W password
+DB_CONN_CONFIG=-h localhost -p 5432 -U postgres
 
 .PHONY: all darwin linux test clean
 
