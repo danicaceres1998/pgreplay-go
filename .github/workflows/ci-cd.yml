@@ -22,9 +22,9 @@ jobs:
         cache-dependency-path: |
              **/go.sum
              **/go.sum
-    - name: Install Dependencies
-      run: go mod download
-    - name: Install Postgres
+    - name: Install Test runner
+      run: go install github.com/onsi/ginkgo/ginkgo@v1.16.5
+    - name: Install Make & Postgres Client
       run: apt-get install -y make postgresql-client libpq-dev
     - name: Create Test Database
       run: make recreatedb
