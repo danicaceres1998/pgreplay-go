@@ -37,20 +37,20 @@ SET default_with_oids = false;
 -- Name: logs; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE logs (
+CREATE TABLE public.logs (
     id integer NOT NULL,
     author text,
     message text
 );
 
 
-ALTER TABLE logs OWNER TO postgres;
+ALTER TABLE public.logs OWNER TO postgres;
 
 --
 -- Name: logs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
-CREATE SEQUENCE logs_id_seq
+CREATE SEQUENCE public.logs_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -59,27 +59,27 @@ CREATE SEQUENCE logs_id_seq
     CACHE 1;
 
 
-ALTER TABLE logs_id_seq OWNER TO postgres;
+ALTER TABLE public.logs_id_seq OWNER TO postgres;
 
 --
 -- Name: logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
-ALTER SEQUENCE logs_id_seq OWNED BY logs.id;
+ALTER SEQUENCE public.logs_id_seq OWNED BY public.logs.id;
 
 
 --
 -- Name: logs id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY logs ALTER COLUMN id SET DEFAULT nextval('logs_id_seq'::regclass);
+ALTER TABLE ONLY public.logs ALTER COLUMN id SET DEFAULT nextval('public.logs_id_seq'::regclass);
 
 
 --
 -- Name: logs logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY logs
+ALTER TABLE ONLY public.logs
     ADD CONSTRAINT logs_pkey PRIMARY KEY (id);
 
 
