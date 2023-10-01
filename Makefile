@@ -17,17 +17,13 @@ bin/%:
 	$(BUILD_COMMAND) -o $@ cmd/$*/main.go
 
 createdb:
-	psql postgres $(DB_CONN_CONFIG) - -c "DROP GROUP IF EXISTS pgreplay_test_users; CREATE GROUP pgreplay_test_users WITH LOGIN CREATEDB;"
-	psql postgres $(DB_CONN_CONFIG) -c "CREATE DATABASE pgreplay_test;"
-	psql pgreplay_test $(DB_CONN_CONFIG) -c "DROP ROLE IF EXISTS alice; CREATE ROLE alice LOGIN;"
-	psql pgreplay_test $(DB_CONN_CONFIG) -c "DROP ROLE IF EXISTS bob;   CREATE ROLE bob   LOGIN;"
-	psql pgreplay_test $(DB_CONN_CONFIG) -c "ALTER GROUP pgreplay_test_users ADD USER alice, bob;"
+	psql $(DB_CONN_CONFIG) -d postgres -c "CREATE DATABASE pgreplay_test;"
 
 dropdb:
-	psql postgres -c "DROP DATABASE IF EXISTS pgreplay_test;"
+	psql $(DB_CONN_CONFIG) -c "DROP DATABASE IF EXISTS pgreplay_test;"
 
 structure:
-	psql pgreplay_test -U pgreplay_test_users -f pkg/pgreplay/integration/testdata/structure.sql
+	psql $(DB_CONN_CONFIG) -f pkg/pgreplay/integration/testdata/structure.sql
 
 recreatedb: dropdb createdb structure
 
