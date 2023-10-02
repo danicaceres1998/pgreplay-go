@@ -23,7 +23,7 @@ dropdb:
 	psql $(DB_CONN_CONFIG) -c "DROP DATABASE IF EXISTS pgreplay_test;"
 
 structure:
-	psql $(DB_CONN_CONFIG) -f pkg/pgreplay/integration/testdata/structure.sql
+	psql $(DB_CONN_CONFIG) -d pgreplay_test -f pkg/pgreplay/integration/testdata/structure.sql
 
 recreatedb: dropdb createdb structure
 
