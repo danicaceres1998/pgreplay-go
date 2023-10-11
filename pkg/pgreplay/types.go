@@ -1,11 +1,12 @@
 package pgreplay
 
 import (
+	"context"
 	stdjson "encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v5"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -109,7 +110,7 @@ type Item interface {
 	GetSessionID() SessionID
 	GetUser() string
 	GetDatabase() string
-	Handle(*pgx.Conn) error
+	Handle(context.Context, *pgx.Conn) error
 }
 
 type Details struct {
@@ -126,14 +127,14 @@ func (e Details) GetDatabase() string     { return e.Database }
 
 type Connect struct{ Details }
 
-func (Connect) Handle(_ *pgx.Conn) error {
+func (Connect) Handle(context.Context, *pgx.Conn) error {
 	return nil // Database will manage opening connections
 }
 
 type Disconnect struct{ Details }
 
-func (Disconnect) Handle(conn *pgx.Conn) error {
-	return conn.Close()
+func (Disconnect) Handle(ctx context.Context, conn *pgx.Conn) error {
+	return conn.Close(ctx)
 }
 
 type Statement struct {
@@ -141,8 +142,8 @@ type Statement struct {
 	Query string `json:"query"`
 }
 
-func (s Statement) Handle(conn *pgx.Conn) error {
-	_, err := conn.Exec(s.Query)
+func (s Statement) Handle(ctx context.Context, conn *pgx.Conn) error {
+	_, err := conn.Exec(ctx, s.Query)
 	return err
 }
 
@@ -168,7 +169,7 @@ type BoundExecute struct {
 	Parameters []interface{} `json:"parameters"`
 }
 
-func (e BoundExecute) Handle(conn *pgx.Conn) error {
-	_, err := conn.Exec(e.Query, e.Parameters...)
+func (e BoundExecute) Handle(ctx context.Context, conn *pgx.Conn) error {
+	_, err := conn.Exec(ctx, e.Query, e.Parameters...)
 	return err
 }

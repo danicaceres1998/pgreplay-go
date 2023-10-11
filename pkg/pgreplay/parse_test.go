@@ -106,7 +106,7 @@ var _ = Describe("ParseErrlog", func() {
 			var items = []Item{}
 			itemsChan, errs, done := ParseErrlog(strings.NewReader(input))
 			go func() {
-				for _ = range errs {
+				for range errs {
 					// no-op, just drain the channel
 				}
 			}()
