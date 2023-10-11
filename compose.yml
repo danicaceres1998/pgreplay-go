@@ -1,0 +1,11 @@
+version: "3"
+services:
+  pgreplay:
+    command: bash -c "while true; do sleep 10; done"
+    build:
+      context: ./
+      dockerfile: ./dev.dockerfile
+    volumes:
+      - ./:/app
+    expose:
+      - 9445

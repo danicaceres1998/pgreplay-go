@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -15,6 +15,33 @@ type (
 	ReplayType int
 	SessionID  string
 )
+
+type DatabaseConnConfig struct {
+	Host     string
+	Port     uint16
+	Database string
+	User     string
+	Password string
+}
+
+type ExtractedLog struct {
+	Details
+	ActionLog string
+	Message   string
+}
+
+type LogMessage struct {
+	actionType string
+	statement  string
+}
+
+func (lm LogMessage) Prefix(parsedFrom string) string {
+	if parsedFrom == ParsedFromErrLog {
+		return lm.actionType + lm.statement
+	}
+
+	return lm.statement
+}
 
 const (
 	ConnectLabel      = "Connect"
@@ -99,13 +126,13 @@ func (e Details) GetDatabase() string     { return e.Database }
 
 type Connect struct{ Details }
 
-func (_ Connect) Handle(_ *pgx.Conn) error {
+func (Connect) Handle(_ *pgx.Conn) error {
 	return nil // Database will manage opening connections
 }
 
 type Disconnect struct{ Details }
 
-func (_ Disconnect) Handle(conn *pgx.Conn) error {
+func (Disconnect) Handle(conn *pgx.Conn) error {
 	return conn.Close()
 }
 

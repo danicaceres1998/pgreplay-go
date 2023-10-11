@@ -1,6 +1,6 @@
 module github.com/gocardless/pgreplay-go
 
-go 1.13
+go 1.21.2
 
 require (
 	github.com/alecthomas/kingpin v2.2.6+incompatible
