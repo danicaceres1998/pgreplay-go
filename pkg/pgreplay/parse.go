@@ -128,6 +128,47 @@ const (
 	LogError                      = "ERROR:  "
 )
 
+var (
+	LogConnectionAuthorized       = LogMessage{ActionLog, "connection authorized: "}
+	LogConnectionReceived         = LogMessage{ActionLog, "connection received: "}
+	LogConnectionDisconnect       = LogMessage{ActionLog, "disconnection: "}
+	LogStatement                  = LogMessage{ActionLog, "statement: "}
+	LogDuration                   = LogMessage{ActionLog, "duration: "}
+	LogExtendedProtocolExecute    = LogMessage{ActionLog, "execute <unnamed>: "}
+	LogExtendedProtocolParameters = LogMessage{ActionDetail, "parameters: "}
+	LogNamedPrepareExecute        = LogMessage{ActionLog, "execute "}
+	LogError                      = LogMessage{ActionError, ""}
+	LogDetail                     = LogMessage{ActionDetail, ""}
+)
+
+// ParseCsvItem constructs a Item from a CSV log line. The format we accept is log_destination='csvlog'.
+func ParseCsvItem(logline []string, unbounds map[SessionID]*Execute, buffer []byte) (Item, error) {
+	if len(logline) < 12 {
+		return nil, fmt.Errorf("failed to parse log line: '%s'", logline)
+	}
+
+	ts, err := time.Parse(PostgresTimestampFormat, logline[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse log timestamp: '%s': %v", logline[0], err)
+	}
+
+	// 2023-06-09 01:50:01.825 UTC,"postgres","postgres",,,64828549.7698,,,,,,,,<msg>
+	user, database, session, actionLog, msg := logline[1], logline[2], logline[5], logline[11], logline[13]
+
+	extractedLog := ExtractedLog{
+		Details: Details{
+			Timestamp: ts,
+			SessionID: SessionID(session),
+			User:      user,
+			Database:  database,
+		},
+		ActionLog: actionLog,
+		Message:   msg,
+	}
+
+	return parseDetailToItem(extractedLog, ParsedFromCsv, unbounds, buffer)
+}
+
 // ParseItem constructs a Item from Postgres errlogs. The format we accept is
 // log_line_prefix='%m|%u|%d|%c|', so we can split by | to discover each component.
 //
@@ -248,14 +289,14 @@ func ParseItem(logline string, unbounds map[SessionID]*Execute, buffer []byte) (
 	// ERROR:  invalid value for parameter \"log_destination\": \"/var\"
 	// We don't replicate errors as this should be the minority of our traffic. Can safely
 	// ignore.
-	if strings.HasPrefix(msg, LogError) {
+	if el.ActionLog == "ERROR" || strings.HasPrefix(el.Message, LogError.Prefix(ParsedFromErrLog)) {
 		return nil, nil
 	}
 
 	// DETAIL:  Unrecognized key word: \"/var/log/postgres/postgres.log\"
 	// The previous condition catches the extended query bind detail statements, and any
 	// other DETAIL logs we can safely ignore.
-	if strings.HasPrefix(msg, LogDetail) {
+	if el.ActionLog == "DETAIL" || strings.HasPrefix(el.Message, LogDetail.Prefix(ParsedFromErrLog)) {
 		return nil, nil
 	}
 
@@ -265,7 +306,7 @@ func ParseItem(logline string, unbounds map[SessionID]*Execute, buffer []byte) (
 // ParseBindParameters constructs an interface slice from the suffix of a DETAIL parameter
 // Postgres errlog. An example input to this function would be:
 //
-// $1 = '', $2 = '30', $3 = '2018-05-03 10:26:27.905086+00'
+// $1 = ”, $2 = '30', $3 = '2018-05-03 10:26:27.905086+00'
 //
 // ...and this would be parsed into []interface{"", "30", "2018-05-03 10:26:27.905086+00"}
 func ParseBindParameters(input string, buffer []byte) ([]interface{}, error) {
@@ -345,8 +386,9 @@ func findClosingTag(input, marker, escapeSequence string) (idx int) {
 // from Postgres logs. Postgres errlog format looks like this:
 //
 // 2018-05-03|gc|LOG:  duration: 0.096 ms  parse <unnamed>:
-//					DELETE FROM que_jobs
-// 					WHERE queue    = $1::text
+//
+//	DELETE FROM que_jobs
+//	WHERE queue    = $1::text
 //
 // ...where a log line can spill over multiple lines, with trailing lines marked with a
 // preceding \t.
