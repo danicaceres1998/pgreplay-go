@@ -1,4 +1,4 @@
-# pgreplay-go [![CircleCI](https://circleci.com/gh/gocardless/pgreplay-go.svg?style=svg&circle-token=d020aaec823388b8e4debe552960450402964ae7)](https://circleci.com/gh/gocardless/pgreplay-go)
+# pgreplay-go [![GitHub Action](https://github.com/danicaceres1998/pgreplay-go/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/danicaceres1998/pgreplay-go/actions?query=branch%3Amaster)
 
 > See a discussion of building this tool at https://blog.lawrencejones.dev/building-a-postgresql-load-tester/
 
@@ -37,6 +37,19 @@ ALTER SYSTEM SET log_min_messages='error';
 ALTER SYSTEM SET log_statement='all';
 ALTER SYSTEM SET log_min_duration_statement=0; 
 SELECT pg_reload_conf();
+```
+
+Or, if you need to capture logs for an RDS instance, you can use these parameters in your
+instances parameter group:
+
+```
+log_destination = csvlog
+log_connections = 1
+log_disconnections = 1
+log_min_error_statement = log
+log_min_messages = error
+log_statement = all
+log_min_duration_statement = 0
 ```
 
 ### 2. Take snapshot
