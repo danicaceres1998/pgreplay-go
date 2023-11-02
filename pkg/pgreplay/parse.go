@@ -170,19 +170,19 @@ const (
 var (
 	LogConnectionAuthorized = LogMessage{
 		ActionLog, "connection authorized: ",
-		regexp.MustCompile(`^connection authorized\: .+`),
+		regexp.MustCompile(`^connection authorized\: `),
 	}
 	LogConnectionReceived = LogMessage{
 		ActionLog, "connection received: ",
-		regexp.MustCompile(`^connection received\: .+`),
+		regexp.MustCompile(`^connection received\: `),
 	}
 	LogConnectionDisconnect = LogMessage{
 		ActionLog, "disconnection: ",
-		regexp.MustCompile(`^disconnection\: .+`),
+		regexp.MustCompile(`^disconnection\: `),
 	}
 	LogStatement = LogMessage{
 		ActionLog, "statement: ",
-		regexp.MustCompile(`^.*statement\: .+`),
+		regexp.MustCompile(`^.*statement\: `),
 	}
 	LogDuration = LogMessage{
 		ActionLog, "duration: ",
@@ -190,15 +190,15 @@ var (
 	}
 	LogExtendedProtocolExecute = LogMessage{
 		ActionLog, "execute <unnamed>: ",
-		regexp.MustCompile(`^.*execute <unnamed>\: .+`),
+		regexp.MustCompile(`^.*execute <unnamed>\: `),
 	}
 	LogExtendedProtocolParameters = LogMessage{
 		ActionDetail, "parameters: ",
-		regexp.MustCompile(`^parameters\: .+`),
+		regexp.MustCompile(`^parameters\: `),
 	}
 	LogNamedPrepareExecute = LogMessage{
 		ActionLog, "execute ",
-		regexp.MustCompile(`^.*execute (\w+)\: .+`),
+		regexp.MustCompile(`^.*execute (\w+)\: `),
 	}
 	LogError  = LogMessage{ActionError, "", regexp.MustCompile(`^ERROR\: .+`)}
 	LogDetail = LogMessage{ActionDetail, "", regexp.MustCompile(`^DETAIL\: .+`)}
@@ -294,6 +294,18 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	// statement has been executed.
 	if LogExtendedProtocolExecute.Match(el.Message, parsedFrom) {
 		query := LogExtendedProtocolExecute.RenderQuery(el.Message, parsedFrom)
+
+		if parsedFrom == ParsedFromCsv {
+			params, err := ParseBindParameters(
+				LogExtendedProtocolParameters.RenderQuery(el.Parameters, parsedFrom), buff,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse bind parameters: %s", err.Error())
+			}
+
+			return Execute{el.Details, query}.Bind(params), nil
+		}
+
 		unbounds[el.SessionID] = &Execute{el.Details, query}
 
 		return nil, nil

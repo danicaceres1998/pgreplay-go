@@ -1,6 +1,7 @@
 package pgreplay
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ var _ = Describe("ParseCsvLog", func() {
 			Expect(len(items)).To(Equal(len(expected)))
 
 			for idx, item := range items {
+				fmt.Println(item.GetUser(), item.GetTimestamp())
 				Expect(item).To(BeEquivalentTo(expected[idx]))
 			}
 		},
@@ -40,8 +42,9 @@ var _ = Describe("ParseCsvLog", func() {
 			`
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"connection received: host=127.0.0.1 port=59103",,,,,,,,,"","client backend"
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"connection authorized: user=alice database=pgreplay_test",,,,,,,,,"","client backend"
+2019-02-25 15:08:27.222 GMT,"postgres","postgres",26223,"172.31.237.67:40680",65391eda.666f,39505,"SELECT",2023-10-25 13:57:46 UTC,706/2676024,0,LOG,00000,"duration: 0.029 ms  execute <unnamed>: SELECT 1 AS one FROM ""mural_files"" WHERE (""mural_files"".""mural_id"" = $1) AND (""mural_files"".""embedded"" = $2) LIMIT $3","parameters: $1 = '1072', $2 = 'f', $3 = '1'",,,,,,,"exec_execute_message, postgres.c:2342","puma: cluster worker 0: 1 [app]","client backend",,5774081526858323261
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"duration: 71.963 ms",,,,,,,,,"","client backend"
-2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"execute <unnamed>: select t.oid",,,,,,,,,"","client backend"
+2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"execute <unnamed>: select t.oid from test t where id = $1","parameters: $1 = '41145'",,,,,,,,"","client backend"
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6375,"idle in transaction",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"statement: SELECT p.name, r.rating
 						FROM products p
 						JOIN reviews r ON p.id = r.product_id
@@ -65,14 +68,17 @@ var _ = Describe("ParseCsvLog", func() {
 						Database:  "postgres",
 					},
 				},
-				Statement{
-					Details: Details{
-						Timestamp: time20190225,
-						SessionID: "6480e39e.1c73",
-						User:      "postgres",
-						Database:  "postgres",
+				BoundExecute{
+					Execute: Execute{
+						Details: Details{
+							Timestamp: time20190225,
+							SessionID: "65391eda.666f",
+							User:      "postgres",
+							Database:  "postgres",
+						},
+						Query: "SELECT 1 AS one FROM \"mural_files\" WHERE (\"mural_files\".\"mural_id\" = $1) AND (\"mural_files\".\"embedded\" = $2) LIMIT $3",
 					},
-					Query: "SELECT p.name, r.rating\n\t\t\t\t\t\tFROM products p\n\t\t\t\t\t\tJOIN reviews r ON p.id = r.product_id\n\t\t\t\t\t\tWHERE r.rating IN (\n\t\t\t\t\t\tSELECT MIN(rating) FROM reviews\n\t\t\t\t\t\tUNION\n\t\t\t\t\t\tSELECT MAX(rating) FROM reviews\n\t\t\t\t\t\t);\n\t\t\t\t",
+					Parameters: []interface{}{"1072", "f", "1"},
 				},
 				BoundExecute{
 					Execute: Execute{
@@ -82,9 +88,18 @@ var _ = Describe("ParseCsvLog", func() {
 							User:      "postgres",
 							Database:  "postgres",
 						},
-						Query: "select t.oid",
+						Query: "select t.oid from test t where id = $1",
 					},
-					Parameters: []interface{}{},
+					Parameters: []interface{}{"41145"},
+				},
+				Statement{
+					Details: Details{
+						Timestamp: time20190225,
+						SessionID: "6480e39e.1c73",
+						User:      "postgres",
+						Database:  "postgres",
+					},
+					Query: "SELECT p.name, r.rating\n\t\t\t\t\t\tFROM products p\n\t\t\t\t\t\tJOIN reviews r ON p.id = r.product_id\n\t\t\t\t\t\tWHERE r.rating IN (\n\t\t\t\t\t\tSELECT MIN(rating) FROM reviews\n\t\t\t\t\t\tUNION\n\t\t\t\t\t\tSELECT MAX(rating) FROM reviews\n\t\t\t\t\t\t);\n\t\t\t\t",
 				},
 				Statement{
 					Details: Details{
@@ -189,6 +204,7 @@ var _ = Describe("ParseBindParameters", func() {
 		Entry("Single escaped string parameter", "$1 = 'hel''lo'", []interface{}{"hel'lo"}),
 		Entry("NULL to nil", "$2 = NULL", []interface{}{nil}),
 		Entry("Many string parameters", "$1 = 'hello', $2 = 'world'", []interface{}{"hello", "world"}),
+		Entry("Many string parameters", "$1 = '41145', $2 = '2018-05-03 10:26:27.905086+00'", []interface{}{"41145", "2018-05-03 10:26:27.905086+00"}),
 	)
 })
 

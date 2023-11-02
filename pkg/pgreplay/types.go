@@ -49,7 +49,7 @@ func (lm LogMessage) Prefix(parsedFrom string) string {
 }
 
 func (lm LogMessage) Match(logline, parsedFrom string) bool {
-	if parsedFrom == ParsedFromCsv {
+	if parsedFrom == ParsedFromErrLog {
 		logline = strings.TrimPrefix(logline, lm.actionType)
 	}
 
@@ -57,6 +57,10 @@ func (lm LogMessage) Match(logline, parsedFrom string) bool {
 }
 
 func (lm LogMessage) RenderQuery(msg, parsedFrom string) string {
+	if parsedFrom == ParsedFromCsv {
+		return msg[len(lm.regex.FindString(msg)):]
+	}
+
 	return strings.TrimPrefix(msg, lm.Prefix(parsedFrom))
 }
 
