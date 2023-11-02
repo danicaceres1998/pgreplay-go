@@ -168,16 +168,40 @@ const (
 )
 
 var (
-	LogConnectionAuthorized       = LogMessage{ActionLog, "connection authorized: ", regexp.MustCompile(``)}
-	LogConnectionReceived         = LogMessage{ActionLog, "connection received: ", regexp.MustCompile(``)}
-	LogConnectionDisconnect       = LogMessage{ActionLog, "disconnection: ", regexp.MustCompile(``)}
-	LogStatement                  = LogMessage{ActionLog, "statement: ", regexp.MustCompile(``)}
-	LogDuration                   = LogMessage{ActionLog, "duration: ", regexp.MustCompile(``)}
-	LogExtendedProtocolExecute    = LogMessage{ActionLog, "execute <unnamed>: ", regexp.MustCompile(``)}
-	LogExtendedProtocolParameters = LogMessage{ActionDetail, "parameters: ", regexp.MustCompile(``)}
-	LogNamedPrepareExecute        = LogMessage{ActionLog, "execute ", regexp.MustCompile(``)}
-	LogError                      = LogMessage{ActionError, "", regexp.MustCompile(``)}
-	LogDetail                     = LogMessage{ActionDetail, "", regexp.MustCompile(``)}
+	LogConnectionAuthorized = LogMessage{
+		ActionLog, "connection authorized: ",
+		regexp.MustCompile(`^connection authorized\: .+`),
+	}
+	LogConnectionReceived = LogMessage{
+		ActionLog, "connection received: ",
+		regexp.MustCompile(`^connection received\: .+`),
+	}
+	LogConnectionDisconnect = LogMessage{
+		ActionLog, "disconnection: ",
+		regexp.MustCompile(`^disconnection\: .+`),
+	}
+	LogStatement = LogMessage{
+		ActionLog, "statement: ",
+		regexp.MustCompile(`^.*statement\: .+`),
+	}
+	LogDuration = LogMessage{
+		ActionLog, "duration: ",
+		regexp.MustCompile(`^duration\: (\d+)\.(\d+) ms$`),
+	}
+	LogExtendedProtocolExecute = LogMessage{
+		ActionLog, "execute <unnamed>: ",
+		regexp.MustCompile(`^.*execute <unnamed>\: .+`),
+	}
+	LogExtendedProtocolParameters = LogMessage{
+		ActionDetail, "parameters: ",
+		regexp.MustCompile(`^parameters\: .+`),
+	}
+	LogNamedPrepareExecute = LogMessage{
+		ActionLog, "execute ",
+		regexp.MustCompile(`^.*execute (\w+)\: .+`),
+	}
+	LogError  = LogMessage{ActionError, "", regexp.MustCompile(`^ERROR\: .+`)}
+	LogDetail = LogMessage{ActionDetail, "", regexp.MustCompile(`^DETAIL\: .+`)}
 )
 
 // ParseCsvItem constructs a Item from a CSV log line. The format we accept is log_destination='csvlog'.
@@ -249,7 +273,7 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	// Duration logs mark completion of replay items, and are not of interest for
 	// reproducing traffic. We should only take an action if there exists an unbound item
 	// for this session, as this log line will confirm the unbound query has no parameters.
-	if strings.HasPrefix(el.Message, LogDuration.Prefix(parsedFrom)) {
+	if LogDuration.Match(el.Message, parsedFrom) {
 		if unbound, ok := unbounds[el.SessionID]; ok {
 			delete(unbounds, el.SessionID)
 			return unbound.Bind(nil), nil
@@ -259,7 +283,7 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	}
 
 	// LOG:  statement: select pg_reload_conf();
-	if strings.HasPrefix(el.Message, LogStatement.Prefix(parsedFrom)) {
+	if LogStatement.Match(el.Message, parsedFrom) {
 		return Statement{el.Details, LogStatement.RenderQuery(el.Message, parsedFrom)}, nil
 	}
 
@@ -268,7 +292,7 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	// even queries that don't have any arguments will be sent as an unamed prepared
 	// statement. We need to wait for a following DETAIL or duration log to confirm the
 	// statement has been executed.
-	if strings.HasPrefix(el.Message, LogExtendedProtocolExecute.Prefix(parsedFrom)) {
+	if LogExtendedProtocolExecute.Match(el.Message, parsedFrom) {
 		query := LogExtendedProtocolExecute.RenderQuery(el.Message, parsedFrom)
 		unbounds[el.SessionID] = &Execute{el.Details, query}
 
@@ -276,9 +300,10 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	}
 
 	// LOG:  execute name: select pg_sleep($1)
-	if strings.HasPrefix(el.Message, LogNamedPrepareExecute.Prefix(parsedFrom)) {
-		nameColonQuery := LogNamedPrepareExecute.RenderQuery(el.Message, parsedFrom)
-		query := strings.SplitN(nameColonQuery, ":", 2)[1]
+	if LogNamedPrepareExecute.Match(el.Message, parsedFrom) {
+		query := strings.SplitN(
+			LogNamedPrepareExecute.RenderQuery(el.Message, parsedFrom), ":", 2,
+		)[1]
 
 		// TODO: This doesn't exactly replicate what we'd expect from named prepares. Instead
 		// of creating a genuine named prepare, we implement them as unnamed prepared
@@ -291,7 +316,7 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	}
 
 	// DETAIL:  parameters: $1 = '1', $2 = NULL
-	if strings.HasPrefix(el.Message, LogExtendedProtocolParameters.Prefix(parsedFrom)) {
+	if LogExtendedProtocolParameters.Match(el.Message, parsedFrom) {
 		if unbound, ok := unbounds[el.SessionID]; ok {
 			parameters, err := ParseBindParameters(LogExtendedProtocolParameters.RenderQuery(el.Message, parsedFrom), buff)
 			if err != nil {
@@ -319,32 +344,32 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 	}
 
 	// LOG:  connection authorized: user=postgres database=postgres
-	if strings.HasPrefix(el.Message, LogConnectionAuthorized.Prefix(parsedFrom)) {
+	if LogConnectionAuthorized.Match(el.Message, parsedFrom) {
 		return Connect{el.Details}, nil
 	}
 
 	// LOG:  disconnection: session time: 0:00:03.861 user=postgres database=postgres host=192.168.99.1 port=51529
-	if strings.HasPrefix(el.Message, LogConnectionDisconnect.Prefix(parsedFrom)) {
+	if LogConnectionDisconnect.Match(el.Message, parsedFrom) {
 		return Disconnect{el.Details}, nil
 	}
 
 	// LOG:  connection received: host=192.168.99.1 port=52188
 	// We use connection authorized for replay, and can safely ignore connection received
-	if strings.HasPrefix(el.Message, LogConnectionReceived.Prefix(parsedFrom)) {
+	if LogConnectionReceived.Match(el.Message, parsedFrom) {
 		return nil, nil
 	}
 
 	// ERROR:  invalid value for parameter \"log_destination\": \"/var\"
 	// We don't replicate errors as this should be the minority of our traffic. Can safely
 	// ignore.
-	if el.ActionLog == "ERROR" || strings.HasPrefix(el.Message, LogError.Prefix(ParsedFromErrLog)) {
+	if el.ActionLog == "ERROR" || LogError.Match(el.Message, parsedFrom) {
 		return nil, nil
 	}
 
 	// DETAIL:  Unrecognized key word: \"/var/log/postgres/postgres.log\"
 	// The previous condition catches the extended query bind detail statements, and any
 	// other DETAIL logs we can safely ignore.
-	if el.ActionLog == "DETAIL" || strings.HasPrefix(el.Message, LogDetail.Prefix(ParsedFromErrLog)) {
+	if el.ActionLog == "DETAIL" || LogDetail.Match(el.Message, parsedFrom) {
 		return nil, nil
 	}
 

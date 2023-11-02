@@ -48,12 +48,12 @@ func (lm LogMessage) Prefix(parsedFrom string) string {
 	return lm.statement
 }
 
-func (lm LogMessage) MessageMatch(logline, parsedFrom string) bool {
+func (lm LogMessage) Match(logline, parsedFrom string) bool {
 	if parsedFrom == ParsedFromCsv {
 		logline = strings.TrimPrefix(logline, lm.actionType)
 	}
 
-	return lm.regex.Match([]byte(logline))
+	return lm.regex.MatchString(logline)
 }
 
 func (lm LogMessage) RenderQuery(msg, parsedFrom string) string {
