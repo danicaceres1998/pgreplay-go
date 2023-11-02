@@ -3,10 +3,12 @@ package pgreplay
 import (
 	stdjson "encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -15,6 +17,47 @@ type (
 	ReplayType int
 	SessionID  string
 )
+
+type DatabaseConnConfig struct {
+	Host     string
+	Port     uint16
+	Database string
+	User     string
+	Password string
+}
+
+type ExtractedLog struct {
+	Details
+	ActionLog  string
+	Message    string
+	Parameters string
+}
+
+type LogMessage struct {
+	actionType string
+	statement  string
+	regex      *regexp.Regexp
+}
+
+func (lm LogMessage) Prefix(parsedFrom string) string {
+	if parsedFrom == ParsedFromErrLog {
+		return lm.actionType + lm.statement
+	}
+
+	return lm.statement
+}
+
+func (lm LogMessage) MessageMatch(logline, parsedFrom string) bool {
+	if parsedFrom == ParsedFromCsv {
+		logline = strings.TrimPrefix(logline, lm.actionType)
+	}
+
+	return lm.regex.Match([]byte(logline))
+}
+
+func (lm LogMessage) RenderQuery(msg, parsedFrom string) string {
+	return strings.TrimPrefix(msg, lm.Prefix(parsedFrom))
+}
 
 const (
 	ConnectLabel      = "Connect"
