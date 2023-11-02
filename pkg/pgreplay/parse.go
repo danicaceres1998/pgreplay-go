@@ -206,7 +206,7 @@ var (
 
 // ParseCsvItem constructs a Item from a CSV log line. The format we accept is log_destination='csvlog'.
 func ParseCsvItem(logline []string, unbounds map[SessionID]*Execute, buffer []byte) (Item, error) {
-	if len(logline) < 12 {
+	if len(logline) < 15 {
 		return nil, fmt.Errorf("failed to parse log line: '%s'", logline)
 	}
 
@@ -296,11 +296,9 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 		query := LogExtendedProtocolExecute.RenderQuery(el.Message, parsedFrom)
 
 		if parsedFrom == ParsedFromCsv {
-			params, err := ParseBindParameters(
-				LogExtendedProtocolParameters.RenderQuery(el.Parameters, parsedFrom), buff,
-			)
+			params, err := ParseBindParameters(LogExtendedProtocolParameters.RenderQuery(el.Parameters, parsedFrom), buff)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse bind parameters: %s", err.Error())
+				return nil, fmt.Errorf("[UnNamedExecute]: failed to parse bind parameters: %s", err.Error())
 			}
 
 			return Execute{el.Details, query}.Bind(params), nil
@@ -313,6 +311,16 @@ func parseDetailToItem(el ExtractedLog, parsedFrom string, unbounds map[SessionI
 
 	// LOG:  execute name: select pg_sleep($1)
 	if LogNamedPrepareExecute.Match(el.Message, parsedFrom) {
+		if parsedFrom == ParsedFromCsv {
+			query := LogNamedPrepareExecute.RenderQuery(el.Message, parsedFrom)
+			params, err := ParseBindParameters(LogExtendedProtocolParameters.RenderQuery(el.Parameters, parsedFrom), buff)
+			if err != nil {
+				return nil, fmt.Errorf("[NamedExecute]: failed to parse bind parameters: %s", err.Error())
+			}
+
+			return Execute{el.Details, query}.Bind(params), nil
+		}
+
 		query := strings.SplitN(
 			LogNamedPrepareExecute.RenderQuery(el.Message, parsedFrom), ":", 2,
 		)[1]
