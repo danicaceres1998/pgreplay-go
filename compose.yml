@@ -8,6 +8,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: postgres
+      PGREPLAY_PID: 975d29623b3124f35e32f05f
     volumes:
       - ./:/app
     expose:
