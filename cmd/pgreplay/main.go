@@ -12,6 +12,7 @@ import (
 	kingpin "github.com/alecthomas/kingpin/v2"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gocardless/pgreplay-go/pkg/aws"
 	"github.com/gocardless/pgreplay-go/pkg/pgreplay"
 	"github.com/pkg/errors"
 )
@@ -27,6 +28,7 @@ var (
 	finishFlag     = app.Flag("finish", "Stop playing logs at this time ("+pgreplay.PostgresTimestampFormat+")").String()
 	metricsAddress = app.Flag("metrics-address", "Address to bind HTTP metrics listener").Default("0.0.0.0").String()
 	metricsPort    = app.Flag("metrics-port", "Port to bind HTTP metrics listener").Default("9445").Uint16()
+	fromS3Bucket   = app.Flag("from-s3-bucket", "Integration to get logs from a S3 Bucket").String()
 
 	filter            = app.Command("filter", "Process an errlog file into a pgreplay preprocessed JSON log")
 	filterJsonInput   = filter.Flag("json-input", "JSON input file").ExistingFile()
@@ -63,15 +65,24 @@ func main() {
 	// Starting the Prometheus Server
 	server := pgreplay.StartPrometheusServer(logger, *metricsAddress, *metricsPort)
 
-	var err error
-	var start, finish *time.Time
+	var (
+		err           error
+		start, finish *time.Time
+		s3Bucket      bool = false
+	)
 
+	// Validations
 	if start, err = parseTimestamp(*startFlag); err != nil {
 		kingpin.Fatalf("--start flag %s", err)
 	}
-
 	if finish, err = parseTimestamp(*finishFlag); err != nil {
 		kingpin.Fatalf("--finish flag %s", err)
+	}
+	if *fromS3Bucket != "" {
+		if _, ok := os.LookupEnv("PGREPLAY_PID"); !ok {
+			kingpin.Fatalf("--from-s3-bucket flag is enabled, please add the PGREPLAY_PID env var to get the pid")
+		}
+		s3Bucket = true
 	}
 
 	switch command {
@@ -80,11 +91,11 @@ func main() {
 
 		switch checkSingleFormat(filterJsonInput, filterErrlogInput, filterCsvLogInput) {
 		case filterJsonInput:
-			items = parseLog(*filterJsonInput, pgreplay.ParseJSON)
+			items = parseLog(*filterJsonInput, s3Bucket, pgreplay.ParseJSON)
 		case filterErrlogInput:
-			items = parseLog(*filterErrlogInput, pgreplay.ParseErrlog)
+			items = parseLog(*filterErrlogInput, s3Bucket, pgreplay.ParseErrlog)
 		case filterCsvLogInput:
-			items = parseLog(*filterCsvLogInput, pgreplay.ParseCsvLog)
+			items = parseLog(*filterCsvLogInput, s3Bucket, pgreplay.ParseCsvLog)
 		default:
 			logger.Log("event", "postgres.error", "error", "you must provide an input")
 			os.Exit(255)
@@ -150,11 +161,11 @@ func main() {
 
 		switch checkSingleFormat(runJsonInput, runErrlogInput, runCsvLogInput) {
 		case runJsonInput:
-			items = parseLog(*runJsonInput, pgreplay.ParseJSON)
+			items = parseLog(*runJsonInput, s3Bucket, pgreplay.ParseJSON)
 		case runErrlogInput:
-			items = parseLog(*runErrlogInput, pgreplay.ParseErrlog)
+			items = parseLog(*runErrlogInput, s3Bucket, pgreplay.ParseErrlog)
 		case runCsvLogInput:
-			items = parseLog(*runCsvLogInput, pgreplay.ParseCsvLog)
+			items = parseLog(*runCsvLogInput, s3Bucket, pgreplay.ParseCsvLog)
 		default:
 			logger.Log("event", "postgres.error", "error", "you must provide an input")
 			os.Exit(255)
@@ -226,7 +237,11 @@ func checkSingleFormat(formats ...*string) (result *string) {
 	return result // which becomes the one that isn't empty
 }
 
-func parseLog(path string, parser pgreplay.ParserFunc) chan pgreplay.Item {
+func parseLog(path string, fromS3 bool, parser pgreplay.ParserFunc) chan pgreplay.Item {
+	if fromS3 {
+		return aws.StreamItemsFromS3(context.Background(), logger, parser, *fromS3Bucket)
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		kingpin.Fatalf("failed to open logfile: %s", err)
