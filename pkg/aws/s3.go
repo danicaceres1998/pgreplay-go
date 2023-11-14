@@ -2,9 +2,13 @@ package aws
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	kingpin "github.com/alecthomas/kingpin/v2"
 	awsSDK "github.com/aws/aws-sdk-go-v2/aws"
@@ -15,11 +19,22 @@ import (
 	"github.com/gocardless/pgreplay-go/pkg/pgreplay"
 )
 
+type ParserHelper struct {
+	Parser pgreplay.ParserFunc
+	Start  time.Time
+	Finish time.Time
+}
+
+type channelPayload struct {
+	index  int
+	target *os.File
+}
+
 func CreateS3Client(cfg awsSDK.Config) s3.Client {
 	return *s3.NewFromConfig(cfg)
 }
 
-func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, parser pgreplay.ParserFunc, bucketName string) chan pgreplay.Item {
+func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, bucketName string, ph ParserHelper) chan pgreplay.Item {
 	folder, ok := os.LookupEnv("PGREPLAY_PID")
 	if !ok {
 		kingpin.Fatalf("fatal to get the PGREPLAY_PID from the env vars")
@@ -31,7 +46,7 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, parser pgrepla
 	}
 
 	s3Client := CreateS3Client(cfg)
-	fileObjects, err := getAllLogFiles(ctx, s3Client, bucketName, folder)
+	fileObjects, err := getAllLogFiles(ctx, s3Client, bucketName, folder, ph.Start, ph.Finish)
 	if err != nil {
 		kingpin.Fatalf("fatal to get log files from s3 bucket: %s", err)
 	}
@@ -39,8 +54,14 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, parser pgrepla
 	// Processing all files
 	out := make(chan pgreplay.Item, pgreplay.InitialScannerBufferSize)
 	go func() {
-		for file := range streamFiles(ctx, s3Client, logger, fileObjects, bucketName) {
-			items, logerrs, done := parser(file)
+		for f := range streamFiles(ctx, s3Client, logger, fileObjects, bucketName) {
+			file, err := os.Open(f.Name())
+			if err != nil {
+				logger.Log("event", "file.error", "error", err)
+				continue
+			}
+
+			items, logerrs, done := ph.Parser(file)
 			go func() {
 				logger.Log("event", "parse.finished", "file", file.Name(), "error", <-done)
 			}()
@@ -55,7 +76,11 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, parser pgrepla
 			for i := range items {
 				out <- i
 			}
+
+			// Clean tmp File
+			os.Remove(file.Name())
 			file.Close()
+			level.Debug(logger).Log("event", "file.cleaner", "msg", "file cleaned", "path", file.Name())
 		}
 
 		close(out)
@@ -64,9 +89,11 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, parser pgrepla
 	return out
 }
 
-func getAllLogFiles(ctx context.Context, s3Client s3.Client, bucketName, folder string) ([]types.Object, error) {
+// Private Functions //
+
+func getAllLogFiles(ctx context.Context, s3Client s3.Client, bucketName, folder string, start, finish time.Time) ([]types.Object, error) {
 	var currentToken *string = nil
-	objects := make([]types.Object, 1000)
+	objects := make([]types.Object, 0, 1000)
 
 	for {
 		result, err := s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
@@ -78,7 +105,12 @@ func getAllLogFiles(ctx context.Context, s3Client s3.Client, bucketName, folder 
 			return nil, err
 		}
 
-		objects = append(objects, result.Contents...)
+		for _, o := range result.Contents {
+			if objectBetweenDates(*o.Key, start, finish) {
+				objects = append(objects, o)
+			}
+		}
+
 		if !result.IsTruncated {
 			break
 		}
@@ -90,46 +122,57 @@ func getAllLogFiles(ctx context.Context, s3Client s3.Client, bucketName, folder 
 }
 
 func streamFiles(ctx context.Context, s3Client s3.Client, logger kitlog.Logger, objects []types.Object, bucketName string) chan *os.File {
-	parallel := 5
-	out := make(chan *os.File, 5)
+	parallel, total := 5, len(objects)
+	out := make(chan *os.File, parallel)
 
 	go func() {
-		localBuffer, maxParallel := make(chan *os.File, parallel*3), make(chan struct{}, parallel)
+		localBuffer, maxParallel := make(chan channelPayload, parallel*3), make(chan struct{}, parallel)
 		for i := 0; i < parallel; i++ {
 			maxParallel <- struct{}{}
 		}
 
 		// Local Buffer Configuration, this waits to the local buffer to accomplish 10 downloaded files
 		go func() {
-			popFirstElement := func(slice []*os.File) ([]*os.File, *os.File) {
-				newSlice := make([]*os.File, 0, cap(slice))
+			popFirstElement := func(slice []channelPayload) ([]channelPayload, channelPayload) {
+				newSlice := make([]channelPayload, 0, cap(slice))
 				return append(newSlice, slice[1:]...), slice[0]
 			}
 
-			counter, buff := 0, make([]*os.File, 0, parallel*3)
+			counter, lastProcessed, buff := 0, 0, make([]channelPayload, 0, parallel*3)
 			for f := range localBuffer {
 				buff = append(buff, f)
-				if counter < 10 {
-					counter++
-					continue
-				}
+				sort.Slice(buff, func(i, j int) bool {
+					return buff[i].index < buff[j].index
+				})
+				counter++
 
-				var element *os.File
-				for {
-					buff, element = popFirstElement(buff)
-					out <- element
-					if len(buff) == 0 {
-						break
+				if amount, ok := enabledToProcess(buff, counter, total, lastProcessed); ok {
+					var (
+						cp channelPayload
+						c  int = 0
+					)
+					// Sending the files
+					for {
+						buff, cp = popFirstElement(buff)
+						out <- cp.target
+						if c == amount {
+							lastProcessed = cp.index + 1
+							break
+						}
+						c++
 					}
 				}
 			}
+
+			// Closing channel
+			close(out)
 		}()
 
 		var wg sync.WaitGroup
-		for _, obj := range objects {
+		for idx, obj := range objects {
 			<-maxParallel
 			wg.Add(1)
-			go func(o types.Object) {
+			go func(o types.Object, i int) {
 				defer func() {
 					maxParallel <- struct{}{}
 					wg.Done()
@@ -140,8 +183,8 @@ func streamFiles(ctx context.Context, s3Client s3.Client, logger kitlog.Logger, 
 					logger.Log("unable to download the file", "error", err)
 				}
 
-				localBuffer <- f
-			}(obj)
+				localBuffer <- channelPayload{index: i, target: f}
+			}(obj, idx)
 		}
 
 		// Waiting to all process to finish
@@ -149,7 +192,6 @@ func streamFiles(ctx context.Context, s3Client s3.Client, logger kitlog.Logger, 
 		// Closing all channels
 		close(maxParallel)
 		close(localBuffer)
-		close(out)
 	}()
 
 	return out
@@ -165,10 +207,11 @@ func downloadFile(ctx context.Context, s3Client s3.Client, bucketName, objectKey
 	}
 	defer result.Body.Close()
 
-	file, err := os.CreateTemp("/var/tmp/", fileName)
+	file, err := os.CreateTemp("/var/tmp/", fmt.Sprintf("%s_", strings.SplitN(fileName, "/", 2)[1]))
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	body, err := io.ReadAll(result.Body)
 	if err != nil {

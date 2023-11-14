@@ -33,7 +33,7 @@ var (
 	filter            = app.Command("filter", "Process an errlog file into a pgreplay preprocessed JSON log")
 	filterJsonInput   = filter.Flag("json-input", "JSON input file").ExistingFile()
 	filterErrlogInput = filter.Flag("errlog-input", "Postgres errlog input file").ExistingFile()
-	filterCsvLogInput = filter.Flag("csvlog-input", "Postgres CSV log input file").ExistingFile()
+	filterCsvLogInput = filter.Flag("csvlog-input", "Postgres CSV log input file").String()
 	filterOutput      = filter.Flag("output", "JSON output file").String()
 	filterNullOutput  = filter.Flag("null-output", "Don't output anything, for testing parsing only").Bool()
 
@@ -45,7 +45,7 @@ var (
 	runPassword    = run.Flag("password", "PostgreSQl password user (the default value is obtained from the DB_PASSWORD env var)").Default(os.Getenv("DB_PASSWORD")).String()
 	runReplayRate  = run.Flag("replay-rate", "Rate of playback, will execute queries at Nx speed").Default("1").Float()
 	runErrlogInput = run.Flag("errlog-input", "Path to PostgreSQL errlog").ExistingFile()
-	runCsvLogInput = run.Flag("csvlog-input", "Path to PostgreSQL CSV log").ExistingFile()
+	runCsvLogInput = run.Flag("csvlog-input", "Path to PostgreSQL CSV log").String()
 	runJsonInput   = run.Flag("json-input", "Path to preprocessed pgreplay JSON log file").ExistingFile()
 )
 
@@ -91,11 +91,11 @@ func main() {
 
 		switch checkSingleFormat(filterJsonInput, filterErrlogInput, filterCsvLogInput) {
 		case filterJsonInput:
-			items = parseLog(*filterJsonInput, s3Bucket, pgreplay.ParseJSON)
+			items = parseLog(*filterJsonInput, s3Bucket, pgreplay.ParseJSON, *start, *finish)
 		case filterErrlogInput:
-			items = parseLog(*filterErrlogInput, s3Bucket, pgreplay.ParseErrlog)
+			items = parseLog(*filterErrlogInput, s3Bucket, pgreplay.ParseErrlog, *start, *finish)
 		case filterCsvLogInput:
-			items = parseLog(*filterCsvLogInput, s3Bucket, pgreplay.ParseCsvLog)
+			items = parseLog(*filterCsvLogInput, s3Bucket, pgreplay.ParseCsvLog, *start, *finish)
 		default:
 			logger.Log("event", "postgres.error", "error", "you must provide an input")
 			os.Exit(255)
@@ -161,11 +161,11 @@ func main() {
 
 		switch checkSingleFormat(runJsonInput, runErrlogInput, runCsvLogInput) {
 		case runJsonInput:
-			items = parseLog(*runJsonInput, s3Bucket, pgreplay.ParseJSON)
+			items = parseLog(*runJsonInput, s3Bucket, pgreplay.ParseJSON, *start, *finish)
 		case runErrlogInput:
-			items = parseLog(*runErrlogInput, s3Bucket, pgreplay.ParseErrlog)
+			items = parseLog(*runErrlogInput, s3Bucket, pgreplay.ParseErrlog, *start, *finish)
 		case runCsvLogInput:
-			items = parseLog(*runCsvLogInput, s3Bucket, pgreplay.ParseCsvLog)
+			items = parseLog(*runCsvLogInput, s3Bucket, pgreplay.ParseCsvLog, *start, *finish)
 		default:
 			logger.Log("event", "postgres.error", "error", "you must provide an input")
 			os.Exit(255)
@@ -237,9 +237,13 @@ func checkSingleFormat(formats ...*string) (result *string) {
 	return result // which becomes the one that isn't empty
 }
 
-func parseLog(path string, fromS3 bool, parser pgreplay.ParserFunc) chan pgreplay.Item {
+func parseLog(path string, fromS3 bool, parser pgreplay.ParserFunc, start, finish time.Time) chan pgreplay.Item {
 	if fromS3 {
-		return aws.StreamItemsFromS3(context.Background(), logger, parser, *fromS3Bucket)
+		return aws.StreamItemsFromS3(context.Background(), logger, *fromS3Bucket, aws.ParserHelper{
+			Parser: parser,
+			Start:  start,
+			Finish: finish,
+		})
 	}
 
 	file, err := os.Open(path)
