@@ -133,11 +133,6 @@ func streamFiles(ctx context.Context, s3Client s3.Client, logger kitlog.Logger, 
 
 		// Local Buffer Configuration, this waits to the local buffer to accomplish 10 downloaded files
 		go func() {
-			popFirstElement := func(slice []channelPayload) ([]channelPayload, channelPayload) {
-				newSlice := make([]channelPayload, 0, cap(slice))
-				return append(newSlice, slice[1:]...), slice[0]
-			}
-
 			counter, lastProcessed, buff := 0, 0, make([]channelPayload, 0, parallel*3)
 			for f := range localBuffer {
 				buff = append(buff, f)

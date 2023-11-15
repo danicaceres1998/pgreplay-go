@@ -30,7 +30,7 @@ func extractDate(fileName string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return time.Unix(int64(unixTime), 0), nil
+	return time.Unix(int64(unixTime), 0).UTC(), nil
 }
 
 func timeBetween(t, min, max time.Time) bool {
@@ -41,15 +41,28 @@ func timeBetween(t, min, max time.Time) bool {
 	return (t.Equal(min) || t.After(min)) && (t.Equal(max) || t.Before(max))
 }
 
+func popFirstElement(slice []channelPayload) ([]channelPayload, channelPayload) {
+	if len(slice) == 0 {
+		return slice, channelPayload{}
+	}
+
+	newSlice := make([]channelPayload, 0, cap(slice))
+	return append(newSlice, slice[1:]...), slice[0]
+}
+
 func enabledToProcess(slice []channelPayload, counter, total, lastProcessed int) (int, bool) {
 	// Enabled to start processing
 	if (float64(counter) / float64(total)) < downloadPercentage {
 		return 0, false
 	}
-
-	// Checking the first element
-	if slice[0].index != lastProcessed {
+	// Checking the first element for pop
+	sliceLen := len(slice)
+	if sliceLen != 0 && (slice[0].index != lastProcessed) {
 		return 0, false
+	}
+	// If the array only has 1 element return 0 and true
+	if sliceLen == 1 {
+		return 0, true
 	}
 
 	// The slice must be pre sorted
