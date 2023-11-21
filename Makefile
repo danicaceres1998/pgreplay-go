@@ -33,8 +33,13 @@ createdbdocker:
 	psql $(DOCKER_CONN_CONFIG) -d postgres -c "CREATE DATABASE pgreplay_test;"
 	psql $(DOCKER_CONN_CONFIG) -d pgreplay_test -f pkg/pgreplay/integration/testdata/structure.sql
 
-# go get -u github.com/onsi/ginkgo/ginkgo
+install_test_suit:
+	go install github.com/onsi/ginkgo/ginkgo
+
 test:
+	ginkgo -r
+
+test_verbose:
 	ginkgo -v -r
 
 clean:

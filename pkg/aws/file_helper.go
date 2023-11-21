@@ -2,13 +2,15 @@ package aws
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	downloadPercentage = 0.25
+	downloadPercentage = 0.15
+	percentageEnvVar   = "PERCENTAGE_S3_BUFFER"
 )
 
 func objectBetweenDates(fileName string, start, finish time.Time) bool {
@@ -52,7 +54,7 @@ func popFirstElement(slice []channelPayload) ([]channelPayload, channelPayload) 
 
 func enabledToProcess(slice []channelPayload, counter, total, lastProcessed int) (int, bool) {
 	// Enabled to start processing
-	if (float64(counter) / float64(total)) < downloadPercentage {
+	if (float64(counter) / float64(total)) < fetchPercentage() {
 		return 0, false
 	}
 	// Checking the first element for pop
@@ -78,5 +80,18 @@ func enabledToProcess(slice []channelPayload, counter, total, lastProcessed int)
 		c++
 	}
 
-	return c, c > 0
+	return c, true
+}
+
+func fetchPercentage() float64 {
+	if v, ok := os.LookupEnv(percentageEnvVar); ok {
+		percentage, err := strconv.ParseFloat(v, 64)
+		if err != nil || (percentage <= 0.0 || percentage >= 0.5) {
+			return downloadPercentage
+		}
+
+		return percentage
+	}
+
+	return downloadPercentage
 }

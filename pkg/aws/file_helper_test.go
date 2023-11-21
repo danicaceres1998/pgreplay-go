@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"time"
 
@@ -62,6 +63,34 @@ var _ = Describe("File Helper functions", func() {
 		})
 	})
 
+	Context("#fetchPercentage", func() {
+		It("should send the default value if the env var is not present", func() {
+			Expect(fetchPercentage()).To(Equal(downloadPercentage))
+		})
+
+		It("should send the variable value if the env var is present", func() {
+			newValue := 0.25
+			err := os.Setenv(percentageEnvVar, fmt.Sprintf("%.2f", newValue))
+
+			Expect(err).To(BeNil())
+			Expect(fetchPercentage()).To(Equal(newValue))
+			err = os.Unsetenv(percentageEnvVar)
+
+			Expect(err).To(BeNil())
+		})
+
+		It("should be less than 50 percent", func() {
+			newValue := 0.50
+			err := os.Setenv(percentageEnvVar, fmt.Sprintf("%.2f", newValue))
+
+			Expect(err).To(BeNil())
+			Expect(fetchPercentage()).To(Equal(downloadPercentage))
+			err = os.Unsetenv(percentageEnvVar)
+
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Context("#popFirstElement", func() {
 		It("should return the first element and move all remain elements", func() {
 			total := 10
@@ -96,7 +125,7 @@ var _ = Describe("File Helper functions", func() {
 
 	Context("#enabledToProcess", func() {
 		var (
-			// downloadPercentage = 25%
+			// downloadPercentage = 15%
 			lessAmount    = 10
 			greaterAmount = 30
 			totalAmount   = 100
