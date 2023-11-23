@@ -45,6 +45,9 @@ var _ = Describe("ParseCsvLog", func() {
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"duration: 71.963 ms",,,,,,,,,"","client backend"
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"execute <unnamed>: select t.oid",,,,,,,,,"","client backend"
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"SELECT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"execute <unnamed>: select t.oid from test t where id = $1","parameters: $1 = '41145'",,,,,,,,"","client backend"
+2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6374,"INSERT",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"execute <unnamed>: insert into logs (author, message) ($1, $2)","parameters: $1 = 'alice', $2 = 'bob'",,,,,,,,"","client backend"
+2019-02-25 15:08:27.222 GMT,"postgres","postgres",4104,"172.31.201.153:41004",6539079a.1008,4265,"UPDATE",2019-02-25 15:08:27.222 GMT,9/100797,0,LOG,00000,"execute <unnamed>: UPDATE ""signatures"" SET ""token"" = $1, ""status"" = $2, ""confirmation_code"" = $3, ""updated_at"" = $4, ""code_send_at"" = $5 WHERE ""signatures"".""id"" = $6","parameters: $1 = 'asdf1234sdfadhjfg', $2 = '1', $3 = '265778', $4 = '2023-10-25 12:23:00.11912', $5 = '2023-10-25 12:23:00.11464', $6 = '191275'",,,,,,,"exec_execute_message, postgres.c:2225","puma: cluster worker 0: 1 [app]","client backend",,6288817976122733116
+2019-02-25 15:08:27.222 GMT,"postgres","postgres",13709,"172.31.238.174:42922",6538f428.358d,480221,"DELETE",2019-02-25 15:08:27.222 GMT,94/34455,0,LOG,00000,"execute <unnamed>: DELETE FROM ""messages"" WHERE (""messages"".""origin"" = $1) AND (""messages"".""id"" = $2) AND (""messages"".""type"" = $3)","parameters: $1 = 'web', $2 = '493822', $3 = '1'",,,,,,,"exec_execute_message, postgres.c:2225","bin/rails","client backend",,942673988706279540
 2019-02-25 15:08:27.222 GMT,"postgres","postgres",7283,"199.167.158.43:57426",6480e39e.1c73,6375,"idle in transaction",2019-02-25 15:08:27.222 GMT,4/286618,0,LOG,00000,"statement: SELECT p.name, r.rating
 						FROM products p
 						JOIN reviews r ON p.id = r.product_id
@@ -115,6 +118,42 @@ var _ = Describe("ParseCsvLog", func() {
 						Query: "select t.oid from test t where id = $1",
 					},
 					Parameters: []interface{}{"41145"},
+				},
+				BoundExecute{
+					Execute: Execute{
+						Details: Details{
+							Timestamp: time20190225,
+							SessionID: "6480e39e.1c73",
+							User:      "postgres",
+							Database:  "postgres",
+						},
+						Query: "insert into logs (author, message) ($1, $2)",
+					},
+					Parameters: []interface{}{"alice", "bob"},
+				},
+				BoundExecute{
+					Execute: Execute{
+						Details: Details{
+							Timestamp: time20190225,
+							SessionID: "6539079a.1008",
+							User:      "postgres",
+							Database:  "postgres",
+						},
+						Query: "UPDATE \"signatures\" SET \"token\" = $1, \"status\" = $2, \"confirmation_code\" = $3, \"updated_at\" = $4, \"code_send_at\" = $5 WHERE \"signatures\".\"id\" = $6",
+					},
+					Parameters: []interface{}{"asdf1234sdfadhjfg", "1", "265778", "2023-10-25 12:23:00.11912", "2023-10-25 12:23:00.11464", "191275"},
+				},
+				BoundExecute{
+					Execute: Execute{
+						Details: Details{
+							Timestamp: time20190225,
+							SessionID: "6538f428.358d",
+							User:      "postgres",
+							Database:  "postgres",
+						},
+						Query: "DELETE FROM \"messages\" WHERE (\"messages\".\"origin\" = $1) AND (\"messages\".\"id\" = $2) AND (\"messages\".\"type\" = $3)",
+					},
+					Parameters: []interface{}{"web", "493822", "1"},
 				},
 				Statement{
 					Details: Details{
