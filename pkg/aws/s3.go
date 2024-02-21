@@ -50,6 +50,9 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, bucketName str
 	if err != nil {
 		kingpin.Fatalf("fatal to get log files from s3 bucket: %s", err)
 	}
+	if len(fileObjects) == 0 {
+		logger.Log("event", "s3.files", "msg", "filtered list of files is empty")
+	}
 
 	// Processing all files
 	out := make(chan pgreplay.Item, pgreplay.InitialScannerBufferSize)
@@ -94,6 +97,10 @@ func StreamItemsFromS3(ctx context.Context, logger kitlog.Logger, bucketName str
 func getAllLogFiles(ctx context.Context, s3Client s3.Client, bucketName, folder string, start, finish time.Time) ([]types.Object, error) {
 	var currentToken *string = nil
 	objects := make([]types.Object, 0, 1000)
+	// Round the startAt datetime
+	start = func(t time.Time) time.Time {
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
+	}(start)
 
 	for {
 		result, err := s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
