@@ -19,15 +19,18 @@
   },
   "description": "Benchmarking dashboard for https://github.com/gocardless/pgreplay-go",
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 919,
-  "iteration": 1658504579327,
+  "id": 4,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "c3c3e388-7184-4832-bca2-3068ab6c508e"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -36,6 +39,15 @@
       },
       "id": 28,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "c3c3e388-7184-4832-bca2-3068ab6c508e"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Benchmarking",
       "type": "row"
     },
@@ -44,10 +56,13 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "$datasource",
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "links": []
+          "links": [],
+          "unitScale": true
         },
         "overrides": []
       },
@@ -78,7 +93,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.5.11",
+      "pluginVersion": "10.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -88,8 +103,11 @@
       "steppedLine": false,
       "targets": [
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
           "exemplar": true,
-          "expr": "rate(pgreplay_items_processed_total{instance=\"$node\"}[$interval])",
+          "expr": "rate(pgreplay_items_processed_total{pod=\"$podName\"}[$interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -98,9 +116,7 @@
         }
       ],
       "thresholds": [],
-      "timeFrom": null,
       "timeRegions": [],
-      "timeShift": null,
       "title": "Items Processed/s",
       "tooltip": {
         "shared": true,
@@ -109,9 +125,7 @@
       },
       "type": "graph",
       "xaxis": {
-        "buckets": null,
         "mode": "time",
-        "name": null,
         "show": true,
         "values": []
       },
@@ -119,25 +133,19 @@
         {
           "$$hashKey": "object:399",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
           "min": "0",
           "show": true
         },
         {
           "$$hashKey": "object:400",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         }
       ],
       "yaxis": {
-        "align": false,
-        "alignLevel": null
+        "align": false
       }
     },
     {
@@ -145,10 +153,13 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "$datasource",
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "links": []
+          "links": [],
+          "unitScale": true
         },
         "overrides": []
       },
@@ -179,7 +190,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.5.11",
+      "pluginVersion": "10.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -200,8 +211,11 @@
       "steppedLine": false,
       "targets": [
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
           "exemplar": true,
-          "expr": "pgreplay_connections_active{instance=\"$node\"}",
+          "expr": "pgreplay_connections_active{pod=\"$podName\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -209,8 +223,11 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
           "exemplar": true,
-          "expr": "rate(pgreplay_connections_established_total{instance=\"$node\"}[$interval])",
+          "expr": "rate(pgreplay_connections_established_total{pod=\"$podName\"}[$interval])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -219,9 +236,7 @@
         }
       ],
       "thresholds": [],
-      "timeFrom": null,
       "timeRegions": [],
-      "timeShift": null,
       "title": "Connections",
       "tooltip": {
         "shared": true,
@@ -230,9 +245,7 @@
       },
       "type": "graph",
       "xaxis": {
-        "buckets": null,
         "mode": "time",
-        "name": null,
         "show": true,
         "values": []
       },
@@ -240,48 +253,57 @@
         {
           "$$hashKey": "object:668",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         },
         {
           "$$hashKey": "object:669",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         }
       ],
       "yaxis": {
-        "align": false,
-        "alignLevel": null
+        "align": false
       }
     },
     {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#299c46",
-        "rgba(237, 129, 40, 0.89)",
-        "#d44a3a"
-      ],
-      "datasource": "$datasource",
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
+      "datasource": {
+        "uid": "$datasource"
       },
-      "format": "s",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "N/A"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s",
+          "unitScale": true
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 3,
@@ -290,44 +312,32 @@
         "y": 1
       },
       "id": 36,
-      "interval": null,
       "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
       "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": false
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "tableColumn": "",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
           "exemplar": true,
-          "expr": "clamp_min((1.0 - pgreplay_items_filter_progress_fraction{instance=\"$node\"}) / rate(pgreplay_items_filter_progress_fraction{instance=\"$node\"}[$interval]), 0)",
+          "expr": "clamp_min((1.0 - pgreplay_items_filter_progress_fraction{pod=\"$podName\"}) / rate(pgreplay_items_filter_progress_fraction{pod=\"$podName\"}[$interval]), 0)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -335,40 +345,52 @@
           "refId": "A"
         }
       ],
-      "thresholds": "",
       "title": "ETA",
-      "type": "singlestat",
-      "valueFontSize": "80%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
+      "type": "stat"
     },
     {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "#d44a3a",
-        "rgba(237, 129, 40, 0.89)",
-        "#299c46"
-      ],
-      "datasource": "$datasource",
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
+      "datasource": {
+        "uid": "$datasource"
       },
-      "format": "percentunit",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": true,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "N/A"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d44a3a",
+                "value": null
+              },
+              {
+                "color": "rgba(237, 129, 40, 0.89)",
+                "value": 50
+              },
+              {
+                "color": "#299c46",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "unitScale": true
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 3,
@@ -377,70 +399,51 @@
         "y": 4
       },
       "id": 37,
-      "interval": null,
       "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
       "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": false
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
-      "tableColumn": "",
+      "pluginVersion": "10.3.3",
       "targets": [
         {
-          "expr": "pgreplay_items_filter_progress_fraction{instance=\"$node\"}",
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "expr": "pgreplay_items_filter_progress_fraction{pod=\"$podName\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A"
         }
       ],
-      "thresholds": "50, 80,90",
       "title": "Progress",
-      "type": "singlestat",
-      "valueFontSize": "80%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
+      "type": "gauge"
     },
     {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "$datasource",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "links": []
+          "links": [],
+          "unitScale": true
         },
         "overrides": []
       },
@@ -471,7 +474,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.5.11",
+      "pluginVersion": "10.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -492,28 +495,36 @@
       "steppedLine": false,
       "targets": [
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "go_memstats_heap_inuse_bytes{instance=\"$node\"}\nand\npgreplay_connections_active{instance=\"$node\"}",
+          "expr": "go_memstats_heap_inuse_bytes{pod=\"$podName\"}\nand\npgreplay_connections_active{pod=\"$podName\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "heap bytes",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "go_goroutines{instance=\"$node\"}\nand\npgreplay_connections_active{instance=\"$node\"}",
+          "expr": "go_goroutines{pod=\"$podName\"}\nand\npgreplay_connections_active{pod=\"$podName\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "goroutines",
+          "range": true,
           "refId": "B"
         }
       ],
       "thresholds": [],
-      "timeFrom": null,
       "timeRegions": [],
-      "timeShift": null,
       "title": "Go Runtime",
       "tooltip": {
         "shared": true,
@@ -522,9 +533,7 @@
       },
       "type": "graph",
       "xaxis": {
-        "buckets": null,
         "mode": "time",
-        "name": null,
         "show": true,
         "values": []
       },
@@ -532,40 +541,71 @@
         {
           "$$hashKey": "object:494",
           "format": "decbytes",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         },
         {
           "$$hashKey": "object:495",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         }
       ],
       "yaxis": {
-        "align": false,
-        "alignLevel": null
+        "align": false
       }
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki_source}"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 38,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki_source}"
+          },
+          "editorMode": "builder",
+          "expr": "{pod=\"$podName\"} |= ``",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Logs",
+      "type": "logs"
     }
   ],
-  "refresh": false,
-  "schemaVersion": 27,
-  "style": "dark",
+  "refresh": "",
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": [
       {
-        "description": null,
-        "error": null,
+        "current": {
+          "selected": false,
+          "text": "prometheus",
+          "value": "c3c3e388-7184-4832-bca2-3068ab6c508e"
+        },
         "hide": 0,
         "includeAll": false,
-        "label": null,
         "multi": false,
         "name": "datasource",
         "options": [],
@@ -581,18 +621,15 @@
         "auto_count": 30,
         "auto_min": "10s",
         "current": {
-          "selected": true,
-          "text": "1m",
-          "value": "1m"
+          "selected": false,
+          "text": "15m",
+          "value": "15m"
         },
-        "description": null,
-        "error": null,
         "hide": 0,
-        "label": null,
         "name": "interval",
         "options": [
           {
-            "selected": true,
+            "selected": false,
             "text": "1m",
             "value": "1m"
           },
@@ -602,30 +639,34 @@
             "value": "5m"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "15m",
             "value": "15m"
           }
         ],
         "query": "1m,5m,15m",
+        "queryValue": "",
         "refresh": 2,
         "skipUrlSync": false,
         "type": "interval"
       },
       {
-        "allValue": null,
-        "datasource": "${datasource}",
-        "definition": "label_values(up{port=\"9445\"},  instance)",
-        "description": null,
-        "error": null,
+        "current": {
+          "selected": false,
+          "text": "pgreplay-52929de375065651ef6016a22-wd8ln",
+          "value": "pgreplay-52929de375065651ef6016a22-wd8ln"
+        },
+        "datasource": {
+          "uid": "${datasource}"
+        },
+        "definition": "label_values({namespace=\"pgreplay\"},pod)",
         "hide": 0,
         "includeAll": false,
-        "label": null,
         "multi": false,
-        "name": "node",
+        "name": "podName",
         "options": [],
         "query": {
-          "query": "label_values(up{port=\"9445\"},  instance)",
+          "query": "label_values({namespace=\"pgreplay\"},pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -633,12 +674,32 @@
         "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "loki",
+          "value": "ff6538f2-4dfc-492d-a2ed-b0952f2bd0f5"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "loki_source",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
       }
     ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -667,5 +728,6 @@
   "timezone": "",
   "title": "pgreplay-go",
   "uid": "0sXjgPR4k",
-  "version": 5
+  "version": 1,
+  "weekStart": ""
 }
